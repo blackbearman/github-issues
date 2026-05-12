@@ -104,12 +104,12 @@ if __name__ == "__main__":
     if convert:
         print(f"Convert issues from {owner}/{repo} to Markdown")
         rows = []
-        print(os.listdir(lists_dir))
+        #print(os.listdir(lists_dir))
         lists = [f for f in sorted(os.listdir(lists_dir)) if os.path.isfile(lists_dir + f)]
         comments = [f for f in sorted(os.listdir(comments_dir)) if os.path.isfile(comments_dir + f)]
-        print(lists)
+        #print(lists)
         for l in lists:
-            print(l)
+            #print(l)
             data = []
             with open(lists_dir + l, "r") as f:
                 data = json.load(f)
