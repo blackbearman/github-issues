@@ -1,0 +1,103 @@
+import re
+import os
+import sys
+import json
+
+import requests
+
+def fetch_issue_list(owner, repo, list_dir, token=None):
+    issues = []
+    i = 0
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all"
+    headers = {"Accept": "application/vnd.github.full+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    
+    r = requests.get(url, headers=headers)
+    while r.status_code == 200:
+        data = r.json()
+        with open(list_dir + f"issues{i}.json", "w") as f:
+            json.dump(data, f)
+        
+        issues += [a["url"] for a in data if not 'pull_request' in a]
+        if 'next' in r.links:
+            next_url = r.links['next']['url']
+            print(f"Next page URL: {next_url}")
+            r = requests.get(next_url)
+            i+=1
+        else:
+            break
+
+    return issues
+
+def fetch_issue_data(owner, repo, issue_number, token=None):
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error: Could not fetch issue. Status code: {response.status_code}")
+        sys.exit(1)
+    
+    return response.json()
+
+def fetch_issue_comments(issue_url, comments_dir, token=None):
+    i = 0
+    id = issue_url.split('/')[-1]
+    url = f"{issue_url}/comments"
+    headers = {"Accept": "application/vnd.github.full+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    
+    r = requests.get(url, headers=headers)
+    while r.status_code == 200:
+        data = r.json()
+        with open(comments_dir + f"issue{id}-c{i}.json", "w") as f:
+            json.dump(data, f)
+        
+        if 'next' in r.links:
+            next_url = r.links['next']['url']
+            print(f"Next page URL: {next_url}")
+            r = requests.get(next_url)
+            i+=1
+        else:
+            break
+
+    return i
+
+if __name__ == "__main__":
+
+    output_dir = 'output/'
+
+    if len(sys.argv) < 3:
+        print("Usage: python3 load.py <owner> <repo> [load] [convert] [github_token]")
+    else:
+        owner = sys.argv[1]
+        repo = sys.argv[2]
+        load = sys.argv[3] if len(sys.argv) > 3 else False
+        convert = sys.argv[4] if len(sys.argv) > 4 else True
+        token = sys.argv[5] if len(sys.argv) > 5 else None
+
+    if load:
+        issue_count = 0
+
+        lists_dir = output_dir + f'{repo}/lists/'
+        os.makedirs(lists_dir, exist_ok=True)
+        issues = fetch_issue_list(owner, repo, lists_dir, token)
+
+        issue_count = len(issues)
+        print(issues)
+        print(str(issue_count) + " issues found")
+
+        comments_dir = output_dir + f'{repo}/comments/'
+        os.makedirs(comments_dir, exist_ok=True)
+        pages = 0
+        for issue in issues:
+            pages += fetch_issue_comments(issue, comments_dir, token)
+
+        print(str(pages) + " pages loaded")
+
+    if convert:
+        pass
