@@ -73,17 +73,20 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 3:
         print("Usage: python3 load.py <owner> <repo> [load] [convert] [github_token]")
+        print("Example: python3 load.py blackbearman github-issues False True")
     else:
         owner = sys.argv[1]
         repo = sys.argv[2]
-        load = sys.argv[3] if len(sys.argv) > 3 else False
-        convert = sys.argv[4] if len(sys.argv) > 4 else True
+        load = sys.argv[3].lower() == 'true' if len(sys.argv) > 3 else False
+        convert = sys.argv[4].lower() == 'true' if len(sys.argv) > 4 else True
         token = sys.argv[5] if len(sys.argv) > 5 else None
+    
+    lists_dir = output_dir + f'{repo}/lists/'
+    comments_dir = output_dir + f'{repo}/comments/'
 
     if load:
+        print(f"Load issues from {owner}/{repo}")
         issue_count = 0
-
-        lists_dir = output_dir + f'{repo}/lists/'
         os.makedirs(lists_dir, exist_ok=True)
         issues = fetch_issue_list(owner, repo, lists_dir, token)
 
@@ -91,7 +94,6 @@ if __name__ == "__main__":
         print(issues)
         print(str(issue_count) + " issues found")
 
-        comments_dir = output_dir + f'{repo}/comments/'
         os.makedirs(comments_dir, exist_ok=True)
         pages = 0
         for issue in issues:
@@ -100,4 +102,47 @@ if __name__ == "__main__":
         print(str(pages) + " pages loaded")
 
     if convert:
-        pass
+        print(f"Convert issues from {owner}/{repo} to Markdown")
+        rows = []
+        print(os.listdir(lists_dir))
+        lists = [f for f in sorted(os.listdir(lists_dir)) if os.path.isfile(lists_dir + f)]
+        comments = [f for f in sorted(os.listdir(comments_dir)) if os.path.isfile(comments_dir + f)]
+        print(lists)
+        for l in lists:
+            print(l)
+            data = []
+            with open(lists_dir + l, "r") as f:
+                data = json.load(f)
+            for s in data:
+                # check issue or pull request
+                if not "pull_request" in s:
+                    rows.append(f"# {s['number']}  {s['title']}\n")
+                    rows.append(f"*{s['user']['login']} created at {s['created_at']}*\n\n")
+                    body = s["body"]
+                    if body:
+                        rows.append(f"{body}\n\n")
+
+                    # load comments
+                    i = 0
+                    cname = f"issue{s['number']}-c{i}.json"
+                    while cname in comments:
+                        comment = []
+                        with open(comments_dir + cname, "r") as f:
+                            comment = json.load(f)
+                        for c in comment:
+                            #rows.append(f"### {s['number']}  {s['title']}\n")
+                            rows.append(f"*{c['user']['login']} commented at {c['created_at']}*\n\n")
+                            body = c["body"]
+                            if body:
+                                rows.append(f"{body}\n\n")
+                        i += 1
+                        cname = f"issue{s['number']}-c{i}.json"
+                    if s['state'] == "closed":
+                        rows.append(f"*{s['closed_by']['login']} closed at {s['closed_at']}*\n\n")
+
+        #print(rows)
+        with open(output_dir + f"{repo}/issues.md", "w") as f:
+            f.writelines(rows)
+        
+
+
