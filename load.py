@@ -30,19 +30,6 @@ def fetch_issue_list(owner, repo, list_dir, token=None):
 
     return issues
 
-def fetch_issue_data(owner, repo, issue_number, token=None):
-    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
-    headers = {"Accept": "application/vnd.github.v3+json"}
-    if token:
-        headers["Authorization"] = f"token {token}"
-    
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"Error: Could not fetch issue. Status code: {response.status_code}")
-        sys.exit(1)
-    
-    return response.json()
-
 def fetch_issue_comments(issue_url, comments_dir, token=None):
     i = 0
     id = issue_url.split('/')[-1]
@@ -104,12 +91,9 @@ if __name__ == "__main__":
     if convert:
         print(f"Convert issues from {owner}/{repo} to Markdown")
         rows = []
-        #print(os.listdir(lists_dir))
         lists = [f for f in sorted(os.listdir(lists_dir)) if os.path.isfile(lists_dir + f)]
         comments = [f for f in sorted(os.listdir(comments_dir)) if os.path.isfile(comments_dir + f)]
-        #print(lists)
         for l in lists:
-            #print(l)
             data = []
             with open(lists_dir + l, "r") as f:
                 data = json.load(f)
@@ -130,7 +114,6 @@ if __name__ == "__main__":
                         with open(comments_dir + cname, "r") as f:
                             comment = json.load(f)
                         for c in comment:
-                            #rows.append(f"### {s['number']}  {s['title']}\n")
                             rows.append(f"*{c['user']['login']} commented at {c['created_at']}*\n\n")
                             body = c["body"]
                             if body:
@@ -140,9 +123,5 @@ if __name__ == "__main__":
                     if s['state'] == "closed":
                         rows.append(f"*{s['closed_by']['login']} closed at {s['closed_at']}*\n\n")
 
-        #print(rows)
         with open(output_dir + f"{repo}/issues.md", "w") as f:
             f.writelines(rows)
-        
-
-
