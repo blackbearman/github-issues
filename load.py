@@ -101,6 +101,8 @@ if __name__ == "__main__":
                 # check issue or pull request
                 if not "pull_request" in s:
                     rows.append(f"# {s['number']}  {s['title']}\n")
+                    labels = ','.join([l['name'] for l in s['labels']])
+                    rows.append(f"*State: {s['state']}. Labels:[{labels}]*\n\n")
                     rows.append(f"*{s['user']['login']} created at {s['created_at']}*\n\n")
                     body = s["body"]
                     if body:
